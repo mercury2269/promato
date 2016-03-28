@@ -10511,23 +10511,104 @@ Elm.Tomato.make = function (_elm) {
    $Time = Elm.Time.make(_elm),
    $TomatoUtils = Elm.TomatoUtils.make(_elm);
    var _op = {};
-   var timerUpdate = function (model) {
-      var tickDown = function (timer) {    return _U.update(timer,{secondsLeft: timer.secondsLeft - 1});};
-      var updateTask = function (task) {
-         return _U.eq(task.isActive,true) && (_U.eq(task.timer.started,true) && _U.cmp(task.timer.secondsLeft,0) > 0) ? _U.update(task,
-         {timer: tickDown(task.timer)}) : task;
-      };
-      return _U.update(model,{tasks: A2($List.map,updateTask,model.tasks)});
+   var getStoredModel = Elm.Native.Port.make(_elm).inbound("getStoredModel",
+   "Maybe.Maybe Tomato.Model",
+   function (v) {
+      return v === null ? Elm.Maybe.make(_elm).Nothing : Elm.Maybe.make(_elm).Just(typeof v === "object" && "tasks" in v && "taskNameInput" in v && "nextID" in v && "timer" in v && "history" in v ? {_: {}
+                                                                                                                                                                                                      ,tasks: typeof v.tasks === "object" && v.tasks instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.tasks.map(function (v) {
+                                                                                                                                                                                                         return typeof v === "object" && "id" in v && "isActive" in v && "name" in v && "finishedTomatoes" in v ? {_: {}
+                                                                                                                                                                                                                                                                                                                  ,id: typeof v.id === "number" && isFinite(v.id) && Math.floor(v.id) === v.id ? v.id : _U.badPort("an integer",
+                                                                                                                                                                                                                                                                                                                  v.id)
+                                                                                                                                                                                                                                                                                                                  ,isActive: typeof v.isActive === "boolean" ? v.isActive : _U.badPort("a boolean (true or false)",
+                                                                                                                                                                                                                                                                                                                  v.isActive)
+                                                                                                                                                                                                                                                                                                                  ,name: typeof v.name === "string" || typeof v.name === "object" && v.name instanceof String ? v.name : _U.badPort("a string",
+                                                                                                                                                                                                                                                                                                                  v.name)
+                                                                                                                                                                                                                                                                                                                  ,finishedTomatoes: typeof v.finishedTomatoes === "object" && v.finishedTomatoes instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.finishedTomatoes.map(function (v) {
+                                                                                                                                                                                                                                                                                                                     return typeof v === "object" ? {_: {}} : _U.badPort("an object with fields ``",
+                                                                                                                                                                                                                                                                                                                     v);
+                                                                                                                                                                                                                                                                                                                  })) : _U.badPort("an array",
+                                                                                                                                                                                                                                                                                                                  v.finishedTomatoes)} : _U.badPort("an object with fields `id`, `isActive`, `name`, `finishedTomatoes`",
+                                                                                                                                                                                                         v);
+                                                                                                                                                                                                      })) : _U.badPort("an array",
+                                                                                                                                                                                                      v.tasks)
+                                                                                                                                                                                                      ,taskNameInput: typeof v.taskNameInput === "string" || typeof v.taskNameInput === "object" && v.taskNameInput instanceof String ? v.taskNameInput : _U.badPort("a string",
+                                                                                                                                                                                                      v.taskNameInput)
+                                                                                                                                                                                                      ,nextID: typeof v.nextID === "number" && isFinite(v.nextID) && Math.floor(v.nextID) === v.nextID ? v.nextID : _U.badPort("an integer",
+                                                                                                                                                                                                      v.nextID)
+                                                                                                                                                                                                      ,timer: typeof v.timer === "object" && "timerType" in v.timer && "started" in v.timer && "secondsLeft" in v.timer ? {_: {}
+                                                                                                                                                                                                                                                                                                                          ,timerType: typeof v.timer.timerType === "string" || typeof v.timer.timerType === "object" && v.timer.timerType instanceof String ? v.timer.timerType : _U.badPort("a string",
+                                                                                                                                                                                                                                                                                                                          v.timer.timerType)
+                                                                                                                                                                                                                                                                                                                          ,started: typeof v.timer.started === "boolean" ? v.timer.started : _U.badPort("a boolean (true or false)",
+                                                                                                                                                                                                                                                                                                                          v.timer.started)
+                                                                                                                                                                                                                                                                                                                          ,secondsLeft: typeof v.timer.secondsLeft === "number" && isFinite(v.timer.secondsLeft) && Math.floor(v.timer.secondsLeft) === v.timer.secondsLeft ? v.timer.secondsLeft : _U.badPort("an integer",
+                                                                                                                                                                                                                                                                                                                          v.timer.secondsLeft)} : _U.badPort("an object with fields `timerType`, `started`, `secondsLeft`",
+                                                                                                                                                                                                      v.timer)
+                                                                                                                                                                                                      ,history: typeof v.history === "object" && v.history instanceof Array ? Elm.Native.List.make(_elm).fromArray(v.history.map(function (v) {
+                                                                                                                                                                                                         return typeof v === "string" || typeof v === "object" && v instanceof String ? v : _U.badPort("a string",
+                                                                                                                                                                                                         v);
+                                                                                                                                                                                                      })) : _U.badPort("an array",
+                                                                                                                                                                                                      v.history)} : _U.badPort("an object with fields `tasks`, `taskNameInput`, `nextID`, `timer`, `history`",
+      v));
+   });
+   var prettySeconds = function (seconds) {
+      var totalMinutes = $Basics.truncate($Basics.toFloat(seconds) / 60);
+      var secondsRemainder = seconds - totalMinutes * 60;
+      var secondsString = _U.cmp(secondsRemainder,10) < 0 ? A2($Basics._op["++"],"0",$Basics.toString(secondsRemainder)) : $Basics.toString(secondsRemainder);
+      return A2($Basics._op["++"],$Basics.toString(totalMinutes),A2($Basics._op["++"],":",secondsString));
    };
+   var tomatoItem = function (_p0) {    return A2($Html.img,_U.list([$Html$Attributes.src("Tomato-icon.png"),$Html$Attributes.width(35)]),_U.list([]));};
+   var timerUpdate = function (model) {
+      var updateTimer = function (timer) {
+         return _U.eq(timer.started,false) ? timer : _U.cmp(timer.secondsLeft,0) > 0 ? _U.update(timer,{secondsLeft: timer.secondsLeft - 1}) : _U.update(timer,
+         {started: false});
+      };
+      return _U.update(model,{timer: updateTimer(model.timer)});
+   };
+   var Stop = {ctor: "Stop"};
+   var Break = function (a) {    return {ctor: "Break",_0: a};};
    var Tick = {ctor: "Tick"};
    var ticker = A2($Signal.map,$Basics.always(Tick),$Time.every($Time.second));
    var Delete = function (a) {    return {ctor: "Delete",_0: a};};
+   var AddTask = {ctor: "AddTask"};
+   var TaskNameInputUpdate = function (a) {    return {ctor: "TaskNameInputUpdate",_0: a};};
+   var taskEntry = F2(function (address,model) {
+      return A2($Html.header,
+      _U.list([$Html$Attributes.id("header")]),
+      _U.list([A2($Html.h1,_U.list([]),_U.list([$Html.text("Promato")]))
+              ,A2($Html.div,_U.list([$Html$Attributes.id("timer")]),_U.list([$Html.text(prettySeconds(model.timer.secondsLeft))]))
+              ,A2($Html.div,
+              _U.list([$Html$Attributes.id("controls")]),
+              _U.list([A2($Html.button,
+                      _U.list([$Html$Attributes.$class("btn"),A2($Html$Events.onClick,address,Break("ShortBreak"))]),
+                      _U.list([$Html.text("Short Break")]))
+                      ,A2($Html.button,
+                      _U.list([$Html$Attributes.$class("btn"),A2($Html$Events.onClick,address,Break("LongBreak"))]),
+                      _U.list([$Html.text("Long Break")]))
+                      ,A2($Html.button,_U.list([$Html$Attributes.$class("btn"),A2($Html$Events.onClick,address,Stop)]),_U.list([$Html.text("Stop")]))]))
+              ,A2($Html.input,
+              _U.list([$Html$Attributes.id("new-task")
+                      ,$Html$Attributes.placeholder("What\'s your task name?")
+                      ,$Html$Attributes.autofocus(true)
+                      ,$Html$Attributes.value(model.taskNameInput)
+                      ,$Html$Attributes.name("newTask")
+                      ,A3($Html$Events.on,"input",$Html$Events.targetValue,function (_p1) {    return A2($Signal.message,address,TaskNameInputUpdate(_p1));})
+                      ,A2($TomatoUtils.onEnter,address,AddTask)]),
+              _U.list([]))]));
+   });
+   var Start = F2(function (a,b) {    return {ctor: "Start",_0: a,_1: b};});
    var taskItem = F2(function (address,task) {
       return A2($Html.li,
-      _U.list([]),
+      _U.list([$Html$Attributes.classList(_U.list([{ctor: "_Tuple2",_0: "active",_1: task.isActive}]))]),
       _U.list([A2($Html.div,
       _U.list([$Html$Attributes.$class("view")]),
-      _U.list([A2($Html.label,_U.list([]),_U.list([$Html.text(task.name)]))
+      _U.list([A2($Html.input,
+              _U.list([$Html$Attributes.$class("start-task")
+                      ,$Html$Attributes.type$("checkbox")
+                      ,$Html$Attributes.checked(task.isActive)
+                      ,A2($Html$Events.onClick,address,A2(Start,task.id,$Basics.not(task.isActive)))]),
+              _U.list([]))
+              ,A2($Html.label,_U.list([]),_U.list([$Html.text(task.name)]))
+              ,A2($Html.div,_U.list([$Html$Attributes.$class("tomatos")]),A2($List.map,tomatoItem,task.finishedTomatoes))
               ,A2($Html.button,_U.list([$Html$Attributes.$class("destroy"),A2($Html$Events.onClick,address,Delete(task.id))]),_U.list([]))]))]));
    });
    var taskList = F2(function (address,tasks) {
@@ -10535,91 +10616,116 @@ Elm.Tomato.make = function (_elm) {
       _U.list([$Html$Attributes.id("main")]),
       _U.list([A2($Html.ul,_U.list([$Html$Attributes.id("task-list")]),A2($List.map,taskItem(address),tasks))]));
    });
-   var ToggleActive = function (a) {    return {ctor: "ToggleActive",_0: a};};
-   var AddTask = {ctor: "AddTask"};
-   var TaskNameInputUpdate = function (a) {    return {ctor: "TaskNameInputUpdate",_0: a};};
-   var taskEntry = F2(function (address,taskName) {
-      return A2($Html.header,
-      _U.list([$Html$Attributes.id("header")]),
-      _U.list([A2($Html.h1,_U.list([]),_U.list([$Html.text("Promato")]))
-              ,A2($Html.input,
-              _U.list([$Html$Attributes.id("new-task")
-                      ,$Html$Attributes.placeholder("What\'s your task name?")
-                      ,$Html$Attributes.autofocus(true)
-                      ,$Html$Attributes.value(taskName)
-                      ,$Html$Attributes.name("newTask")
-                      ,A3($Html$Events.on,"input",$Html$Events.targetValue,function (_p0) {    return A2($Signal.message,address,TaskNameInputUpdate(_p0));})
-                      ,A2($TomatoUtils.onEnter,address,AddTask)]),
-              _U.list([]))]));
-   });
    var view = F2(function (address,model) {
       return A2($Html.div,
       _U.list([$Html$Attributes.$class("content")]),
       _U.list([A2($Html.section,
       _U.list([$Html$Attributes.id("promatoapp")]),
-      _U.list([A3($Html$Lazy.lazy2,taskEntry,address,model.taskNameInput),A3($Html$Lazy.lazy2,taskList,address,model.tasks)]))]));
+      _U.list([A3($Html$Lazy.lazy2,taskEntry,address,model),A3($Html$Lazy.lazy2,taskList,address,model.tasks)]))]));
    });
-   var Reset = {ctor: "Reset"};
-   var Stop = {ctor: "Stop"};
-   var Start = {ctor: "Start"};
    var NoOp = {ctor: "NoOp"};
    var inbox = $Signal.mailbox(NoOp);
    var signals = $Signal.mergeMany(_U.list([inbox.signal,ticker]));
-   var initialModel = {tasks: _U.list([]),taskNameInput: "",nextID: 1};
-   var LongBreak = {ctor: "LongBreak"};
-   var Break = {ctor: "Break"};
-   var Work = {ctor: "Work"};
-   var newTask = F2(function (name,id) {
-      return {id: id,isActive: true,name: name,finishedTomatoes: 0,timer: {timerType: Work,started: false,secondsLeft: 60 * 25}};
-   });
+   var newTomato = {};
    var tomatoUpdate = function (model) {
-      var stop = function (timer) {    return _U.update(timer,{started: false});};
-      var updateTask = function (t) {
-         return _U.eq(t.isActive,true) && (_U.eq(t.timer.started,true) && _U.cmp(t.timer.secondsLeft,0) < 1) ? _U.eq(t.timer.timerType,Work) ? _U.update(t,
-         {timer: stop(t.timer),finishedTomatoes: t.finishedTomatoes + 1}) : _U.update(t,{timer: stop(t.timer)}) : t;
-      };
-      return _U.update(model,{tasks: A2($List.map,updateTask,model.tasks)});
+      var isTimerFinished = function (timer) {    return _U.eq(timer.started,true) && (_U.cmp(timer.secondsLeft,0) < 1 && _U.eq(timer.timerType,"Work"));};
+      var updateTask = F2(function (timer,task) {
+         return _U.eq(task.isActive,true) && isTimerFinished(timer) ? _U.update(task,
+         {finishedTomatoes: A2($List._op["::"],newTomato,task.finishedTomatoes),isActive: false}) : task;
+      });
+      return _U.update(model,{tasks: A2($List.map,updateTask(model.timer),model.tasks)});
    };
+   var newTask = F2(function (name,id) {    return {id: id,isActive: false,name: name,finishedTomatoes: _U.list([])};});
+   var timerTypeSecondsMap = function (timerType) {
+      var _p2 = timerType;
+      switch (_p2)
+      {case "Work": return 60 * 25;
+         case "ShortBreak": return 60 * 5;
+         case "LongBreak": return 60 * 20;
+         default: return 0;}
+   };
+   var newTimer = function (timerType) {    return {timerType: timerType,started: false,secondsLeft: timerTypeSecondsMap(timerType)};};
    var update = F2(function (action,model) {
-      var _p1 = action;
-      switch (_p1.ctor)
+      var _p3 = action;
+      switch (_p3.ctor)
       {case "NoOp": return model;
          case "AddTask": return _U.update(model,
            {nextID: model.nextID + 1
            ,taskNameInput: ""
            ,tasks: $String.isEmpty(model.taskNameInput) ? model.tasks : A2($List._op["::"],A2(newTask,model.taskNameInput,model.nextID),model.tasks)});
-         case "TaskNameInputUpdate": return _U.update(model,{taskNameInput: _p1._0});
-         case "Delete": return _U.update(model,{tasks: A2($List.filter,function (t) {    return !_U.eq(t.id,_p1._0);},model.tasks)});
-         case "ToggleActive": var updateTask = function (e) {    return _U.eq(e.id,_p1._0) ? _U.update(e,{isActive: $Basics.not(e.isActive)}) : e;};
-           return _U.update(model,{tasks: A2($List.map,updateTask,model.tasks)});
+         case "TaskNameInputUpdate": return _U.update(model,{taskNameInput: _p3._0});
+         case "Delete": return _U.update(model,{tasks: A2($List.filter,function (t) {    return !_U.eq(t.id,_p3._0);},model.tasks)});
          case "Tick": return tomatoUpdate(timerUpdate(model));
-         case "Start": return model;
-         case "Stop": return model;
-         default: return model;}
+         case "Start": var _p4 = _p3._1;
+           var historyMessage = function (isActive) {    return isActive ? "Started Task" : "Stopped Task";};
+           var newWorkTimer = newTimer("Work");
+           var updateTimer = function (timer) {    return _p4 ? _U.update(newWorkTimer,{started: _p4}) : newWorkTimer;};
+           var updateTask = function (t) {    return _U.eq(t.id,_p3._0) ? _U.update(t,{isActive: _p4}) : _U.update(t,{isActive: false});};
+           return _U.update(model,
+           {tasks: A2($List.map,updateTask,model.tasks),timer: updateTimer(model.timer),history: A2($List._op["::"],historyMessage(_p4),model.history)});
+         case "Break": var newShortBreakTimer = newTimer(_p3._0);
+           var updateTasks = function (t) {    return _U.update(t,{isActive: false});};
+           return _U.update(model,{tasks: A2($List.map,updateTasks,model.tasks),timer: _U.update(newShortBreakTimer,{started: true})});
+         default: var stopTimer = function (timer) {    return _U.update(timer,{started: false});};
+           var updateTasks = function (t) {    return _U.update(t,{isActive: false});};
+           return _U.update(model,{tasks: A2($List.map,updateTasks,model.tasks),timer: stopTimer(model.timer)});}
    });
+   var initialModel = function () {
+      var emptyModel = {tasks: _U.list([]),taskNameInput: "",nextID: 1,timer: newTimer("Work"),history: _U.list([])};
+      return A2($Maybe.withDefault,emptyModel,getStoredModel);
+   }();
    var model = A3($Signal.foldp,update,initialModel,signals);
+   var modelChanges = Elm.Native.Port.make(_elm).outboundSignal("modelChanges",
+   function (v) {
+      return {tasks: Elm.Native.List.make(_elm).toArray(v.tasks).map(function (v) {
+                return {id: v.id
+                       ,isActive: v.isActive
+                       ,name: v.name
+                       ,finishedTomatoes: Elm.Native.List.make(_elm).toArray(v.finishedTomatoes).map(function (v) {    return {};})};
+             })
+             ,taskNameInput: v.taskNameInput
+             ,nextID: v.nextID
+             ,timer: {timerType: v.timer.timerType,started: v.timer.started,secondsLeft: v.timer.secondsLeft}
+             ,history: Elm.Native.List.make(_elm).toArray(v.history).map(function (v) {    return v;})};
+   },
+   model);
+   var setStoredModel = Elm.Native.Port.make(_elm).outboundSignal("setStoredModel",
+   function (v) {
+      return {tasks: Elm.Native.List.make(_elm).toArray(v.tasks).map(function (v) {
+                return {id: v.id
+                       ,isActive: v.isActive
+                       ,name: v.name
+                       ,finishedTomatoes: Elm.Native.List.make(_elm).toArray(v.finishedTomatoes).map(function (v) {    return {};})};
+             })
+             ,taskNameInput: v.taskNameInput
+             ,nextID: v.nextID
+             ,timer: {timerType: v.timer.timerType,started: v.timer.started,secondsLeft: v.timer.secondsLeft}
+             ,history: Elm.Native.List.make(_elm).toArray(v.history).map(function (v) {    return v;})};
+   },
+   model);
    var main = A2($Signal.map,view(inbox.address),model);
-   var Task = F5(function (a,b,c,d,e) {    return {id: a,isActive: b,name: c,finishedTomatoes: d,timer: e};});
+   var Tomato = {};
+   var Task = F4(function (a,b,c,d) {    return {id: a,isActive: b,name: c,finishedTomatoes: d};});
    var Timer = F3(function (a,b,c) {    return {timerType: a,started: b,secondsLeft: c};});
-   var Model = F3(function (a,b,c) {    return {tasks: a,taskNameInput: b,nextID: c};});
+   var Model = F5(function (a,b,c,d,e) {    return {tasks: a,taskNameInput: b,nextID: c,timer: d,history: e};});
    return _elm.Tomato.values = {_op: _op
                                ,Model: Model
                                ,Timer: Timer
                                ,Task: Task
-                               ,Work: Work
-                               ,Break: Break
-                               ,LongBreak: LongBreak
+                               ,Tomato: Tomato
                                ,initialModel: initialModel
+                               ,timerTypeSecondsMap: timerTypeSecondsMap
+                               ,newTimer: newTimer
                                ,newTask: newTask
+                               ,newTomato: newTomato
                                ,NoOp: NoOp
                                ,Start: Start
-                               ,Stop: Stop
-                               ,Reset: Reset
                                ,TaskNameInputUpdate: TaskNameInputUpdate
                                ,AddTask: AddTask
-                               ,ToggleActive: ToggleActive
                                ,Delete: Delete
                                ,Tick: Tick
+                               ,Break: Break
+                               ,Stop: Stop
                                ,update: update
                                ,timerUpdate: timerUpdate
                                ,tomatoUpdate: tomatoUpdate
@@ -10627,6 +10733,8 @@ Elm.Tomato.make = function (_elm) {
                                ,taskEntry: taskEntry
                                ,taskList: taskList
                                ,taskItem: taskItem
+                               ,tomatoItem: tomatoItem
+                               ,prettySeconds: prettySeconds
                                ,ticker: ticker
                                ,inbox: inbox
                                ,signals: signals

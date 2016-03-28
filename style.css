@@ -12,10 +12,15 @@ body {
     font-smoothing: antialiased;
 }
 
+button,
+input[type="checkbox"] {
+  outline: none;
+}
+
 #promatoapp {
     background: #fff;
     background: rgba(255, 255, 255, 0.9);
-    margin: 130px 0 40px 0;
+    margin: 300px 0 40px 0;
     border: 1px solid #ccc;
     position: relative;
     border-top-left-radius: 2px;
@@ -37,7 +42,7 @@ body {
 
 #promatoapp h1 {
     position: absolute;
-    top: -120px;
+    top: -310px;
     width: 100%;
     font-size: 70px;
     font-weight: bold;
@@ -50,6 +55,29 @@ body {
     -ms-text-rendering: optimizeLegibility;
     -o-text-rendering: optimizeLegibility;
     text-rendering: optimizeLegibility;
+}
+
+#timer {
+    position: absolute;
+    top: -130px;
+    width: 100%;
+    text-align: center;
+    font-size: 100px;
+}
+
+#controls {
+    position: absolute;
+    top: -73px;
+    width: 100%;
+    text-align: center;
+    font-size: 100px;
+}
+
+#controls button {
+    font-size: 18px;
+    padding: 6px;
+    cursor: pointer;
+    margin: 5px;
 }
 
 #header {
@@ -90,3 +118,94 @@ body {
     z-index: 2;
     box-shadow: none;
 }
+
+#task-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#task-list li {
+    position: relative;
+    font-size: 24px;
+    border-bottom: 1px dotted #ccc;
+}
+
+
+
+#task-list li .destroy {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 10px;
+    bottom: 0;
+    width: 40px;
+    height: 40px;
+    margin: auto 0;
+    font-size: 18px;
+    color: #a88a8a;
+    background-color: white;
+    border: 0;
+    cursor: pointer;
+}
+
+#task-list .tomatos {
+    position: absolute;
+    top: 9px;
+    right: 55px;
+}
+
+#task-list li .destroy:after {
+    content: '✖';
+}
+
+#task-list li:hover .destroy {
+    display: block;
+}
+
+#task-list li label {
+    white-space: pre;
+    word-break: break-word;
+    padding: 15px 60px 15px 15px;
+    margin-left: 45px;
+    display: block;
+    line-height: 1.2;
+    -webkit-transition: color 0.4s;
+    transition: color 0.4s;
+}
+
+#task-list li .start-task {
+    text-align: center;
+    width: 40px;
+    /* auto, since non-WebKit browsers doesn't support input styling */
+    height: auto;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    margin: 6px;
+    /* Mobile Safari */
+    border: none;
+    -webkit-appearance: none;
+    -ms-appearance: none;
+    -o-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+#task-list li .start-task:after {
+    content: '>';
+    /* 40 + a couple of pixels visual adjustment */
+    line-height: 43px;
+    font-size: 36px;
+    color: #d9d9d9;
+    text-shadow: 0 -1px 0 #bfbfbf;
+}
+
+#task-list li .start-task:checked:after {
+    color: #85ada7;
+    text-shadow: 0 1px 0 #669991;
+    bottom: 1px;
+    position: relative;
+}
+
+

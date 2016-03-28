@@ -16,12 +16,14 @@ type alias Model =
   {
     tasks: List Task,
     taskNameInput: String,
-    nextID: Int
+    nextID: Int,
+    timer: Timer,
+    history: List String
   }
 
 type alias Timer = 
   {
-    timerType: TimerType,
+    timerType: String,
     started: Bool,
     secondsLeft: Int
   }
@@ -31,48 +33,67 @@ type alias Task =
     id: Int,
     isActive: Bool,
     name: String,
-    finishedTomatoes: Int,
-    timer: Timer
+    finishedTomatoes: List Tomato
   }
 
 
-type TimerType = Work | Break | LongBreak
+type alias Tomato =
+  {
+  }
 
 initialModel : Model
 initialModel =
-  {
-    tasks = [],
-    taskNameInput = "",
-    nextID = 1
-  }
+  let
+    emptyModel =
+      {
+        tasks = [],
+        taskNameInput = "",
+        nextID = 1,
+        timer = newTimer "Work",
+        history = []
+      }
+  in Maybe.withDefault emptyModel getStoredModel
+
+timerTypeSecondsMap : String -> Int
+timerTypeSecondsMap timerType =
+    case timerType of
+      "Work" -> 60 * 25
+      "ShortBreak" -> 60 * 5
+      "LongBreak" -> 60 * 20
+      _ -> 0
+
+newTimer : String -> Timer 
+newTimer timerType = 
+  { timerType = timerType, 
+    started = False, 
+    secondsLeft = timerTypeSecondsMap timerType }
+
 
 newTask : String -> Int -> Task
 newTask name id =
   {
     id = id,
-    isActive = True,
+    isActive = False,
     name = name,
-    finishedTomatoes = 0,
-    timer = 
-      { 
-        timerType = Work,
-        started = False,
-        secondsLeft = 60 * 25
-      }
+    finishedTomatoes = []
+  }
+
+newTomato : Tomato 
+newTomato = 
+  {
   }
 
 -- UPDATE
 
 type Action 
   = NoOp
-  | Start
-  | Stop
-  | Reset
+  | Start Int Bool
   | TaskNameInputUpdate String
   | AddTask
-  | ToggleActive Int
   | Delete Int
   | Tick
+  | Break String
+  | Stop
 
 
 -- How do we update our model for the give action
@@ -97,55 +118,79 @@ update action model =
     Delete id -> 
       { model | tasks = List.filter (\t -> t.id /= id) model.tasks}
 
-    ToggleActive id -> 
-      let
-        updateTask e = 
-          if e.id == id then { e | isActive = (not e.isActive) } else e
-      in
-      { model | tasks = List.map updateTask model.tasks }
-
     Tick ->
       model
         |> timerUpdate
         |> tomatoUpdate
 
-    Start -> 
-      model
+    Start id isActive -> 
+      let 
+        updateTask t = 
+          if t.id == id 
+            then { t | isActive = isActive } 
+            else { t | isActive = False }
 
-    Stop -> 
-      model
+        newWorkTimer =
+          newTimer "Work"
 
-    Reset -> 
-      model
+        updateTimer timer =
+          if isActive
+            then 
+              { newWorkTimer | started = isActive }
+            else
+              newWorkTimer
+
+        historyMessage isActive = 
+          if isActive then "Started Task" else "Stopped Task"
+      in
+        { model | 
+          tasks = List.map updateTask model.tasks, 
+          timer = updateTimer model.timer,
+          history = historyMessage isActive :: model.history }
+
+    Break breakType ->
+      let 
+        updateTasks t = { t | isActive = False }
+        newShortBreakTimer = newTimer breakType
+      in
+        { model | 
+          tasks = List.map updateTasks model.tasks, 
+          timer = { newShortBreakTimer | started = True }}
+
+    Stop ->
+      let
+        updateTasks t = { t | isActive = False }
+        stopTimer timer =
+          { timer | started = False }
+      in
+        { model | tasks = List.map updateTasks model.tasks, timer = stopTimer model.timer }    
 
 
 timerUpdate : Model -> Model
 timerUpdate model =
   let
-    tickDown timer =
-      { timer | secondsLeft = timer.secondsLeft - 1 }
-    updateTask task =
-      if task.isActive == True && task.timer.started == True && task.timer.secondsLeft > 0
-        then { task | timer = tickDown task.timer }
-        else task 
+    updateTimer timer =
+      if timer.started == False
+        then timer
+        else 
+          if timer.secondsLeft > 0
+            then { timer | secondsLeft = timer.secondsLeft - 1 }
+            else { timer | started = False }
   in 
-    { model | tasks = List.map updateTask model.tasks }
+    { model | timer = updateTimer model.timer }
 
 tomatoUpdate : Model -> Model
 tomatoUpdate model =
   let 
-    stop timer =
-      { timer | started = False}
-    updateTask t =
-      if t.isActive == True && t.timer.started == True && t.timer.secondsLeft <= 0
-        then 
-          if t.timer.timerType == Work
-            then { t | timer = stop t.timer, finishedTomatoes = t.finishedTomatoes + 1 }
-            else { t | timer = stop t.timer }
-        else t
-  in 
-    { model | tasks = List.map updateTask model.tasks }
+    isTimerFinished timer = 
+      timer.started == True && timer.secondsLeft <= 0 && timer.timerType == "Work"
 
+    updateTask timer task =
+      if task.isActive == True && isTimerFinished timer
+        then { task | finishedTomatoes = newTomato :: task.finishedTomatoes, isActive = False }
+        else task
+  in 
+    { model | tasks = List.map (updateTask model.timer) model.tasks  }
 
 
 
@@ -159,22 +204,43 @@ view address model =
       section
       [ id "promatoapp" ]
       [
-        lazy2 taskEntry address model.taskNameInput
+        lazy2 taskEntry address model
         , lazy2 taskList address model.tasks
       ]
     ]
 
 
-taskEntry : Address Action -> String -> Html
-taskEntry address taskName =
+taskEntry : Address Action -> Model -> Html
+taskEntry address model =
   header
     [ id "header" ]
     [ h1 [] [ text "Promato" ]
+    , div 
+      [ id "timer" ]
+      [ text (prettySeconds model.timer.secondsLeft) ]
+    , div
+      [ id "controls" ]
+      [ button
+        [ class "btn",
+          onClick address (Break "ShortBreak")
+        ]
+        [ text "Short Break" ]
+      , button
+        [ class "btn",
+          onClick address (Break "LongBreak")
+        ]
+        [ text "Long Break" ]
+      , button
+        [ class "btn" ,
+          onClick address Stop
+        ]
+        [ text "Stop"]
+      ]
     , input
       [ id "new-task"
       , placeholder "What's your task name?"
       , autofocus True
-      , value taskName
+      , value model.taskNameInput
       , name "newTask"
       , on "input" targetValue (Signal.message address << TaskNameInputUpdate)
       , Utils.onEnter address AddTask
@@ -195,12 +261,23 @@ taskList address tasks =
 taskItem : Address Action -> Task -> Html
 taskItem address task =
   li
-    []
+    [ classList [ ("active", task.isActive) ]
+    ]
     [ div
         [ class "view" ]
-        [ label 
+        [ input
+              [ class "start-task"
+              , type' "checkbox"
+              , checked task.isActive
+              , onClick address (Start task.id (not task.isActive))
+              ]
+              []
+          , label 
           [ ]
           [ text task.name ]
+          , div
+            [ class "tomatos" ]
+            (List.map tomatoItem task.finishedTomatoes)
           , button 
             [ class "destroy"
             , onClick address (Delete task.id)
@@ -209,6 +286,35 @@ taskItem address task =
         ] 
     ]
 
+tomatoItem : Tomato -> Html
+tomatoItem _ =
+  img
+    [ src "Tomato-icon.png", width 35 ]
+    []
+
+prettySeconds : Int -> String
+prettySeconds seconds = 
+  let
+    totalMinutes = truncate ((toFloat seconds) / 60)
+    secondsRemainder = seconds - (totalMinutes * 60)
+    secondsString = 
+        if secondsRemainder < 10
+          then "0" ++ (toString secondsRemainder)
+          else (toString secondsRemainder)
+  in
+    (toString totalMinutes) ++ ":" ++ secondsString
+
+-- PORTS
+
+port modelChanges : Signal Model
+port modelChanges =
+  model
+
+port getStoredModel : Maybe Model
+
+port setStoredModel : Signal Model
+port setStoredModel =
+  model
 
 -- SIGNALS
 

@@ -12,7 +12,19 @@
 </body>
 
 <script type="text/javascript">
-var app = Elm.fullscreen(Elm.Tomato);
+var promatoModel = localStorage.getItem('promato-model');
+var startingModel = promatoModel ? JSON.parse(promatoModel) : null;
+
+var app = Elm.fullscreen(Elm.Tomato, { getStoredModel: startingModel } );
+
+app.ports.setStoredModel.subscribe(function(model) {
+	localStorage.setItem('promato-model', JSON.stringify(model));
+});
+
+app.ports.modelChanges.subscribe(function(model) {
+	console.log(model);
+})
+
 </script>
 
 </html>
