@@ -10654,7 +10654,8 @@ Elm.Tomato.make = function (_elm) {
            ,taskNameInput: ""
            ,tasks: $String.isEmpty(model.taskNameInput) ? model.tasks : A2($List._op["::"],A2(newTask,model.taskNameInput,model.nextID),model.tasks)});
          case "TaskNameInputUpdate": return _U.update(model,{taskNameInput: _p3._0});
-         case "Delete": return _U.update(model,{tasks: A2($List.filter,function (t) {    return !_U.eq(t.id,_p3._0);},model.tasks)});
+         case "Delete": var stopTimer = function (timer) {    return _U.update(timer,{started: false});};
+           return _U.update(model,{tasks: A2($List.filter,function (t) {    return !_U.eq(t.id,_p3._0);},model.tasks),timer: stopTimer(model.timer)});
          case "Tick": return tomatoUpdate(timerUpdate(model));
          case "Start": var _p4 = _p3._1;
            var historyMessage = function (isActive) {    return isActive ? "Started Task" : "Stopped Task";};

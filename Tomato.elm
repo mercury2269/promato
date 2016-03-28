@@ -116,7 +116,11 @@ update action model =
       { model | taskNameInput = name }
 
     Delete id -> 
-      { model | tasks = List.filter (\t -> t.id /= id) model.tasks}
+      let stopTimer timer = { timer | started = False }
+      in 
+      { model | 
+        tasks = List.filter (\t -> t.id /= id) model.tasks,
+        timer = stopTimer model.timer }
 
     Tick ->
       model
